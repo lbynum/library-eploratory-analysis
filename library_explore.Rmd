@@ -9,6 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 
 library(dplyr)
+library(readr)
 ```
 
 # Honnold Wireless Data
@@ -35,7 +36,7 @@ Manufacturer: the name of the device manufacturer: Apple
 wireless_data_path <- 'HMC\ Math\ 158/wireless/2016FallSemWireless.tsv'
 ezproxy_data_path <- 'HMC\ Math\ 158/ezproxy/'
 
-wireless <- read.delim(wireless_data_path, header = TRUE, sep = '\t')
+wireless <- read_delim(wireless_data_path, '\t', escape_double = FALSE, trim_ws=TRUE)
 wireless[wireless == '-'] <- NA
 ```
 
@@ -44,6 +45,17 @@ Explore.
 ```{r}
 str(wireless)
 names(wireless)
+summary(wireless)
+wireless <- na.omit(wireless)
+wireless$disconnect_month <- as.numeric(wireless$disconnect_month)
+wireless$disconnect_minute <- as.numeric(wireless$disconnect_minute)
+nrow(wireless)
+summary(wireless)
+```
+
+Clean.
+```{r}
+nrow(wireless)
 ```
 
 # EZProxy Data
