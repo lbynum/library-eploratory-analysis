@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
 
 library(dplyr)
 library(readr)
@@ -32,109 +32,13 @@ library(readr)
 * AOS: text description of the mobile device's operationg system: OS X
 Manufacturer: the name of the device manufacturer: Apple
 
-```{r, cache=TRUE}
-wireless_data_path <- 'HMC\ Math\ 158/wireless/2016FallSemWireless.tsv'
-ezproxy_data_path <- 'HMC\ Math\ 158/ezproxy/'
+# Preprocessing
 
-wireless <- read_delim(wireless_data_path, '\t', escape_double = FALSE, trim_ws=TRUE)
-wireless[wireless == '-'] <- NA
+```{r, code=readLines('preprocess_wireless_data.R'), echo=FALSE}
 ```
 
-Explore.
-
-```{r}
-str(wireless)
-names(wireless)
-summary(wireless)
-wireless <- na.omit(wireless)
-wireless$disconnect_month <- as.numeric(wireless$disconnect_month)
-wireless$disconnect_minute <- as.numeric(wireless$disconnect_minute)
-nrow(wireless)
+```{r, cache=TRUE}
+wireless <- preprocess_wireless_data()
 summary(wireless)
 ```
 
-Clean.
-```{r}
-nrow(wireless)
-```
-
-# EZProxy Data
-
-Get the data.
-
-```{r, cache=TRUE}
-filelist = paste0(ezproxy_data_path, list.files(ezproxy_data_path, '*.tsv'))
-is_a_ccl_file <- endsWith(filelist, 'hashed.tsv')
-ccl_files <- filelist[is_a_ccl_file]
-spu_files <- filelist[!is_a_ccl_file]
-spu <- lapply(spu_files, function(x) read.delim(x, header = TRUE, sep = '\t'))
-ccl <- lapply(ccl_files, function(x) read.delim(x, header = TRUE, sep = '\t'))
-```
-
-Concatenate the separate files, making sure column names are all aligned the same way.
-
-```{r, cache=TRUE}
-spu <- do.call(rbind, lapply(spu, function(x) x[match(names(spu[[1]]), names(x))]))
-ccl <- do.call(rbind, lapply(ccl, function(x) x[match(names(ccl[[1]]), names(x))]))
-```
-
-## CCL (EZProxy Report) Data Dictionary
-
-* hashed user id: a unique identifier for a user e.g. * f7cbed2a86c711b4e28d13f74c40acf9f2a85a61db354bd8aa22dd1f944735c8
-* campus: e.g. pomona
-* session start datetime: e.g. 2016-07-07 15:39:24
-* session end datetime: e.g. 2016-07-07 18:57:32
-* session id: a unique identifier per ezproxy session e.g. oXFj5X88FvnsWrI
-* ip address: (subnet only) e.g. 66.17.192
-
-### IP Address Subnets at Claremont
-
-134.173.* belong to the Claremont Colleges. 
-
-The third octet values are assigned as follows:
-
-* 8-15      Claremont SSID Wireless
-* 24-31      Claremont SSID Wireless
-* 32-63      HMC
-* 64-95      Pomona
-* 96-103     KGI            		
-* 112-123     Pitzer
-* 124-127     CUC - Legacy
-* 128-135     CUC
-* 140-141     Keck Science     
-* 144-159     Scripps
-* 160-191     CMC
-* 192-223     CINE Wireless
-* 224-239     CGU  
-* 244-245     VPN Interior (non-Administrative) 
-
-## CCL Data
-
-```{r}
-names(ccl)
-str(ccl)
-```
-
-## SPU Data Dictionary
-
-* session: unique session id. foreign key for report
-* scheme: typically the transport protocol, e.g. http
-* subdomain: aka host, e.g. 'www'
-* domain: often the name of the service, e.g. lexisnexis	
-* tld: The final portion of a Uniform Resource Locator, e.g. 'com'	
-* path: file path to the requested resource	
-* query: often the requested resource, or if there's a search query it should be here	
-* fragment: leftovers, e.g. preferences, tracking crap, etc.
-
-## SPU Data
-
-```{r}
-names(spu)
-str(spu)
-```
-
-# Combined EZProxy Data
-
-```{r}
-ccl_spu <- inner_join(spu, ccl, by = 'session')
-```
