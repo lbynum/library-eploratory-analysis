@@ -11,6 +11,7 @@ knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
 library(dplyr)
 library(readr)
 library(lubridate)
+library(ggplot2)
 ```
 
 # Honnold Wireless Data
@@ -49,9 +50,16 @@ summary(wireless)
 # Group By Day
 
 ```{r}
-# wireless_by_day <- wireless %>% group_by(connect_doy) %>%
-#   summarize(
-#     
-#   )
+duration_by_day <- wireless %>% 
+  group_by(connect_doy) %>%
+  summarize(mean_duration = mean(duration_mins))
+
+ggplot(duration_by_day, aes(x = connect_doy, y = mean_duration)) + geom_point()
+
+usage_by_day <- wireless %>% 
+  group_by(connect_doy) %>%
+  summarize(net_bytes = sum(bytesIn))
+
+ggplot(usage_by_day, aes(x = connect_doy, y = net_bytes)) + geom_point()
 ```
 
