@@ -10,6 +10,7 @@ knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
 
 library(dplyr)
 library(readr)
+library(lubridate)
 ```
 
 # Honnold Wireless Data
@@ -39,6 +40,18 @@ Manufacturer: the name of the device manufacturer: Apple
 
 ```{r, cache=TRUE}
 wireless <- preprocess_wireless_data()
+# separate into numeric and non-numeric
+numeric_data <- select_if(wireless, is.numeric)
+non_numeric_data <- select_if(wireless, is.character)
 summary(wireless)
+```
+
+# Group By Day
+
+```{r}
+# wireless_by_day <- wireless %>% group_by(connect_doy) %>%
+#   summarize(
+#     
+#   )
 ```
 
