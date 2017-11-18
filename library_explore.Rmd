@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE, cache = TRUE)
 
 library(dplyr)
 library(readr)
@@ -62,4 +62,56 @@ usage_by_day <- wireless %>%
 
 ggplot(usage_by_day, aes(x = connect_doy, y = net_bytes)) + geom_point()
 ```
+
+# EZProxy Data
+
+## CCL (EZProxy Report) Data Dictionary
+
+* hashed user id: a unique identifier for a user e.g. * f7cbed2a86c711b4e28d13f74c40acf9f2a85a61db354bd8aa22dd1f944735c8
+* campus: e.g. pomona
+* session start datetime: e.g. 2016-07-07 15:39:24
+* session end datetime: e.g. 2016-07-07 18:57:32
+* session id: a unique identifier per ezproxy session e.g. oXFj5X88FvnsWrI
+* ip address: (subnet only) e.g. 66.17.192
+
+## SPU Data Dictionary
+
+* session: unique session id. foreign key for report
+* scheme: typically the transport protocol, e.g. http
+* subdomain: aka host, e.g. 'www'
+* domain: often the name of the service, e.g. lexisnexis	
+* tld: The final portion of a Uniform Resource Locator, e.g. 'com'	
+* path: file path to the requested resource	
+* query: often the requested resource, or if there's a search query it should be here	
+* fragment: leftovers, e.g. preferences, tracking crap, etc.
+
+### IP Address Subnets at Claremont
+
+134.173.* belong to the Claremont Colleges. 
+
+The third octet values are assigned as follows:
+
+* 8-15      Claremont SSID Wireless
+* 24-31      Claremont SSID Wireless
+* 32-63      HMC
+* 64-95      Pomona
+* 96-103     KGI            		
+* 112-123     Pitzer
+* 124-127     CUC - Legacy
+* 128-135     CUC
+* 140-141     Keck Science     
+* 144-159     Scripps
+* 160-191     CMC
+* 192-223     CINE Wireless
+* 224-239     CGU  
+* 244-245     VPN Interior (non-Administrative) 
+
+```{r, code=readLines('preprocess_ezproxy_data.R'), echo=FALSE}
+```
+
+```{r, cache=TRUE}
+ezproxy <- preprocess_ezproxy_data()
+head(ezproxy)
+```
+
 

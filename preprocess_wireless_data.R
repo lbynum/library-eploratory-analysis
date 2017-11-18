@@ -27,7 +27,9 @@ preprocess_wireless_data <- function(x) {
   wireless$folder[is.na(wireless$location)] <- ''
   
   # drop rows with NA
+  print(nrow(wireless))
   wireless <- na.omit(wireless)
+  print(nrow(wireless))
   
   # make disconnet_month and disconnect_minute numeric
   wireless$disconnect_month <- as.numeric(wireless$disconnect_month)
