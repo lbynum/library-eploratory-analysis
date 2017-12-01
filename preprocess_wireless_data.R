@@ -67,5 +67,10 @@ preprocess_wireless_data <- function(x) {
       difftime(stop_datetime, start_datetime, units = 'min')
     )
   )
+  
+  wireless <- wireless %>% mutate( 
+    disconnected_at_closing = disconnected_at_closing(stop_datetime)
+  )
+  
   return(wireless)
 }
