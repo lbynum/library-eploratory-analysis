@@ -115,3 +115,21 @@ head(ezproxy)
 ```
 
 
+# Session by Campus
+
+```{r}
+# stacked bar by month
+ezproxy %>% select(campus, session_start) %>% mutate(month = month(session_start)) %>% ggplot(aes(x = month,fill = campus)) + geom_histogram()
+  
+# multiple bar by month
+ezproxy %>% select(campus, session_start) %>% mutate(month = month(session_start)) %>% ggplot(aes(x = month,fill = campus)) + geom_histogram(position = 'dodge')
+
+# stats about sessions by campus
+ezproxy %>% select(campus, session_duration_mins) %>% group_by(campus) %>% summarize(min_session_duration = min(session_duration_mins, na.rm = TRUE),
+          mean_session_duration = mean(session_duration_mins, na.rm = TRUE),
+          median_session_duration = median(session_duration_mins, na.rm = TRUE),
+          max_session_duration = max(session_duration_mins, na.rm = TRUE),
+          num_na_durations = sum(is.na(session_duration_mins)))
+```
+
+
