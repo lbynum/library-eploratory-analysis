@@ -72,11 +72,16 @@ preprocess_wireless_data <- function(x) {
   wireless <- wireless %>% mutate( 
     disconnected_at_closing = disconnected_at_closing(stop_datetime)
   )
+  wireless$disconnected_at_closing <- as.numeric(as.logical(wireless$disconnected_at_closing))
   
   # create connected_at_opening
   wireless <- wireless %>% mutate(
     connected_at_opening = connected_at_opening(start_datetime)
   )
+  wireless$connected_at_opening <- as.numeric(as.logical(wireless$connected_at_opening))
+  
+  # add connect date column
+  wireless$connect_date <- as.Date(wireless$start_datetime)
   
   return(wireless)
 }

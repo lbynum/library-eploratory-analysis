@@ -4,8 +4,10 @@ library(lubridate)
 connected_at_opening <- function(connectTime) {
   # vectors to store if each data point is a weekday, weekend, or should
   # be treated as both
-  is_weekday <- 1 <= wday(connectTime, label = FALSE) & 5 >= wday(connectTime, label = FALSE)
-  is_weekend <- wday(connectTime, label = FALSE) == 6 | wday(connectTime, label = FALSE) == 7 
+  is_weekday <- wday(connectTime, label = FALSE) >= 2 & 
+                wday(connectTime, label = FALSE) <= 6
+  is_weekend <- wday(connectTime, label = FALSE) == 7 | 
+                wday(connectTime, label = FALSE) == 1 
   
   # time requirements to determine if the datapoint connected at opening
   before_810 <- hour(connectTime) == 8 & minute(connectTime) <= 10
