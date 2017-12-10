@@ -1,0 +1,263 @@
+---
+title: "library_explore"
+author: "Lucius Bynum"
+date: "9/21/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache=TRUE)
+
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+```
+
+# Honnold Wireless Data
+
+## Data Dictionary 
+
+* MACID: (hashed) a unique id every network device has. 50:CC:F8:80:39:4D  is my (old) cellphone
+* UUID: (hashed) a unique hashed user id
+* Campus: 7C campus abbreviations, e.g. HMC
+* Device Name: name given to the wireless access point: CUC-HON-1-N-CAFE
+* Folder: Like Name, a hierarchical representation of the access point used in the configuration: Top > CUC > Honold Mudd Library > First Floor
+* Device Location: Text description of the location: Honnold Cafe
+* Connect Year: year in which a connection was initiated: 2016
+* Connect Month: month in which a connection was initiated: 1
+* Connect Day: day in which a connection was initiated: 3
+* Connect Hour: hour in which a connection was initiated (24h): 15
+* Connect Day of Week: number of the day in week in which a connection was initiated: 6
+* Connect Day of Year: number of the day in year in which a connection was initiated: 3
+* Total Traffic (MB): megabytes of data that passed through the connection: 23.56
+* AOS: text description of the mobile device's operationg system: OS X
+Manufacturer: the name of the device manufacturer: Apple
+
+```{r, cache=TRUE}
+wireless_data_path <- 'HMC\ Math\ 158/wireless/2016FallSemWireless.tsv'
+ezproxy_data_path <- 'HMC\ Math\ 158/ezproxy/'
+
+wireless <- read.delim(wireless_data_path, header = TRUE, sep = '\t')
+wireless[wireless == '-'] <- NA
+```
+
+Explore.
+
+```{r}
+str(wireless)
+names(wireless)
+```
+
+# EZProxy Data
+
+Get the data.
+
+```{r, cache=TRUE}
+filelist = paste0(ezproxy_data_path, list.files(ezproxy_data_path, '*.tsv'))
+is_a_ccl_file <- endsWith(filelist, 'hashed.tsv')
+ccl_files <- filelist[is_a_ccl_file]
+spu_files <- filelist[!is_a_ccl_file]
+spu <- lapply(spu_files, function(x) read.delim(x, header = TRUE, sep = '\t'))
+ccl <- lapply(ccl_files, function(x) read.delim(x, header = TRUE, sep = '\t'))
+```
+
+Concatenate the separate files, making sure column names are all aligned the same way.
+
+```{r, cache=TRUE}
+spu <- do.call(rbind, lapply(spu, function(x) x[match(names(spu[[1]]), names(x))]))
+ccl <- do.call(rbind, lapply(ccl, function(x) x[match(names(ccl[[1]]), names(x))]))
+```
+
+## CCL (EZProxy Report) Data Dictionary
+
+* hashed user id: a unique identifier for a user e.g. * f7cbed2a86c711b4e28d13f74c40acf9f2a85a61db354bd8aa22dd1f944735c8
+* campus: e.g. pomona
+* session start datetime: e.g. 2016-07-07 15:39:24
+* session end datetime: e.g. 2016-07-07 18:57:32
+* session id: a unique identifier per ezproxy session e.g. oXFj5X88FvnsWrI
+* ip address: (subnet only) e.g. 66.17.192
+
+### IP Address Subnets at Claremont
+
+134.173.* belong to the Claremont Colleges. 
+
+The third octet values are assigned as follows:
+
+* 8-15      Claremont SSID Wireless
+* 24-31      Claremont SSID Wireless
+* 32-63      HMC
+* 64-95      Pomona
+* 96-103     KGI            		
+* 112-123     Pitzer
+* 124-127     CUC - Legacy
+* 128-135     CUC
+* 140-141     Keck Science     
+* 144-159     Scripps
+* 160-191     CMC
+* 192-223     CINE Wireless
+* 224-239     CGU  
+* 244-245     VPN Interior (non-Administrative) 
+
+## CCL Data
+
+```{r}
+names(ccl)
+str(ccl)
+```
+
+## SPU Data Dictionary
+
+* session: unique session id. foreign key for report
+* scheme: typically the transport protocol, e.g. http
+* subdomain: aka host, e.g. 'www'
+* domain: often the name of the service, e.g. lexisnexis	
+* tld: The final portion of a Uniform Resource Locator, e.g. 'com'	
+* path: file path to the requested resource	
+* query: often the requested resource, or if there's a search query it should be here	
+* fragment: leftovers, e.g. preferences, tracking crap, etc.
+
+## SPU Data
+
+```{r}
+names(spu)
+str(spu)
+nrow(spu)
+nrow(ccl)
+```
+
+# Combined EZProxy Data
+```{r, code=readLines('preprocess_ezproxy_data.R'), echo=FALSE}
+```
+```{r}
+ccl_spu <- preprocess_ezproxy_data()
+ccl2 <- preprocess_ezproxy_data_ccl()
+ccl_clean <- preprocess_ezproxy_data_ccl()
+levels(ccl_spu$campus) <- c('cgu', 'cmc', 'cuc', 'hmc', 'kec', 'kgi', 'pit', 'pom', 'scr', 'kec', 'pit', 'pom', 'scr')
+levels(ccl2$campus) <- c('cgu', 'cmc', 'cuc', 'hmc', 'kec', 'kgi', 'pit', 'pom', 'scr', 'kec', 'pit', 'pom', 'scr')
+levels(ccl_clean$campus) <- c('cgu', 'cmc', 'cuc', 'hmc', 'kec', 'kgi', 'pit', 'pom', 'scr', 'kec', 'pit', 'pom', 'scr')
+```
+```{r}
+helper <- function(x) {
+  x <- toString(x)
+  if (startsWith(x, '134.173')) {
+    finalPiece = strtoi(strsplit(x, '\\.')[[1]][3])
+    if (finalPiece == 244 || finalPiece == 245) {
+      'vpn'
+    } else if ((finalPiece >= 8 && finalPiece <= 15) || (finalPiece >= 24 && finalPiece <= 31)){
+      'ssid'
+    } else if (finalPiece >= 32 && finalPiece <= 63) {
+      'hmc'
+    } else if (finalPiece >= 64 && finalPiece <= 95) {
+      'pom'
+    } else if (finalPiece >= 96 && finalPiece <= 103) {
+      'kgi'
+    } else if (finalPiece >= 112 && finalPiece <= 123) {
+      'pit'
+    } else if (finalPiece >= 124 && finalPiece <= 135) {
+      'cuc'
+    } else if (finalPiece == 140 || finalPiece == 141) {
+      'keck'
+    } else if (finalPiece >= 144 && finalPiece <= 159) {
+      'scr'
+    } else if (finalPiece >= 160 && finalPiece <= 191) {
+      'cmc'
+    } else if (finalPiece >= 192 && finalPiece <= 223) {
+      'cine'
+    } else if (finalPiece >= 224 && finalPiece <= 239) {
+      'cgu'
+    } else if (finalPiece >= 244 && finalPiece <= 245) {
+      'vpn'
+    } else {
+      'on'
+    }
+  } else {
+    'off'
+  }
+}
+
+helper2 <- function(x) {
+  if (x == 'off') {
+    'off'
+  } else if (x == 'vpn') {
+    'vpn'
+  } else {
+    'on'
+  }
+}
+nrow(ccl_clean)
+locationCol2 <- sapply(ccl_clean$ipSubnet, helper)
+locationCol <- sapply(ccl_spu$ipSubnet, helper)
+ccl_spu["location"] <- as.factor(locationCol)
+ccl_clean["location"] <- as.factor(locationCol2)
+onOffCol <- sapply(ccl_spu$location, helper2)
+onOffCol2 <- sapply(ccl_clean$location, helper2)
+ccl_spu["onOff"] <- as.factor(onOffCol)
+ccl_clean["onOff"] <- as.factor(onOffCol2)
+nrow(ccl_spu)
+ncol(ccl_spu)
+```
+```{r}
+ccl_spu %>% select(campus, location, session) %>%  group_by(campus, location) %>% summarize(counts = n_distinct(session)) %>% ggplot(aes(x = campus, y = counts, fill = location)) + geom_bar(stat='identity') + ggtitle("Campus vs IP location") + xlab("Campus") + ylab("Count")+ theme(text=element_text(size=15), axis.text.x=element_text(angle=90, hjust=1)) 
+```
+
+```{r, fig.width=20, fig.height=16}
+domainCounts <- ccl_spu %>% group_by(domain) %>% summarize(counts=n())
+names(domainCounts)
+domainCounts <- domainCounts %>% arrange(desc(domainCounts$counts))
+domains <- domainCounts$domain[1:20]
+domains
+summary <- ccl_spu %>% select(campus, location, session, domain, onOff) %>% group_by(domain, onOff) %>% summarize(counts = n()) 
+summary <- summary[summary$domain %in% domains,]
+summary %>% ggplot(aes(x=reorder(domain, -counts), y=counts, fill=onOff)) + geom_bar(stat='identity') + ggtitle("IP location vs domain") + xlab("Domain") + ylab("Count") + theme(text=element_text(size=40), axis.text.x=element_text(angle=90, hjust=1)) + guides(fill=guide_legend(title="IP location"))
+```
+
+```{r, fig.width=20, fig.height=16}
+domainCounts <- ccl_spu %>% group_by(domain) %>% summarize(counts=n())
+names(domainCounts)
+domainCounts <- domainCounts %>% arrange(desc(domainCounts$counts))
+domains <- domainCounts$domain[1:20]
+domains
+ccl_spu_filtered <- ccl_spu[ccl_spu$onOff == 'on',]
+summary <- ccl_spu_filtered %>% select(campus, location, session, domain, onOff) %>% group_by(domain, location) %>% summarize(counts = n()) 
+summary <- summary[summary$domain %in% domains,]
+summary %>% ggplot(aes(x=reorder(domain, -counts), y=counts, fill=location)) + geom_bar(stat='identity')  + ggtitle("IP location vs domain") + xlab("Domain") + ylab("Count") + theme(text=element_text(size=40), axis.text.x=element_text(angle=90, hjust=1)) + guides(fill=guide_legend(title="IP location"))
+```
+```{r}
+ccl_clean <- ccl_clean[ccl_clean$session_duration_mins < 24*60, ]
+ccl_clean <- ccl_clean[ccl_clean$session_duration_mins > 122, ]
+ccl_clean <- na.omit(ccl_clean)
+ccl2 <- ccl2[ccl2$session_duration_mins < 750,]
+```
+```{r}
+counts <- count(ccl_clean %>% filter(campus == 'pom'), onOff)
+counts
+cgu <- ccl_clean %>% filter(campus == 'cgu') %>% group_by(onOff) %>% summarize(count = n()) %>% ggplot(aes(x=onOff, y=count)) + geom_bar(stat="identity") + ggtitle("CGU") + xlab("IP Location") + ylab("Count")
+scr <- ccl_clean %>% filter(campus == 'scr') %>% group_by(onOff) %>% summarize(count = n()) %>% ggplot(aes(x=onOff, y=count)) + geom_bar(stat="identity") + ggtitle("SCR") + xlab("IP Location") + ylab("Count")
+pom <- ccl_clean %>% filter(campus == 'pom') %>% group_by(onOff) %>% summarize(count = n()) %>% ggplot(aes(x=onOff, y=count)) + geom_bar(stat="identity") + ggtitle("POM") + xlab("IP Location") + ylab("Count")
+hmc <- ccl_clean %>% filter(campus == 'hmc') %>% group_by(onOff) %>% summarize(count = n()) %>% ggplot(aes(x=onOff, y=count)) + geom_bar(stat="identity") + ggtitle("HMC") + xlab("IP Location") + ylab("Count")
+cmc <- ccl_clean %>% filter(campus == 'cmc') %>% group_by(onOff) %>% summarize(count = n()) %>% ggplot(aes(x=onOff, y=count)) + geom_bar(stat="identity") + ggtitle("CMC") + xlab("IP Location") + ylab("Count")
+kgi <- ccl_clean %>% filter(campus == 'kgi') %>% group_by(onOff) %>% summarize(count = n()) %>% ggplot(aes(x=onOff, y=count)) + geom_bar(stat="identity") + ggtitle("KGI") + xlab("IP Location") + ylab("Count")
+pit <- ccl_clean %>% filter(campus == 'pit') %>% group_by(onOff) %>% summarize(count = n()) %>% ggplot(aes(x=onOff, y=count)) + geom_bar(stat="identity") + ggtitle("PIT") + xlab("IP Location") + ylab("Count")
+grid.arrange(cgu, scr, pom, hmc, cmc, kgi, pit, ncol=3, top="Distribution of on-campus, off-campus, and vpn connections by campus")
+```
+```{r, fig.width=10, fig.height=8}
+par(mar=c(4,6,2,2))
+names(ccl_clean)
+mod <- lm(session_duration_mins ~ onOff, ccl_clean)
+mod2 <- lm(session_duration_mins ~ location, ccl_clean)
+summary(mod)
+summary(mod2)
+anova(mod)
+plot(ccl_clean$onOff, ccl_clean$session_duration_mins)
+filtered <- ccl_clean %>% filter(location %in% c('cgu', 'cine', 'cmc', 'hmc', 'kgi', 'pit', 'pom', 'scr'))
+(tci <- TukeyHSD(aov(session_duration_mins ~ onOff, ccl_clean)))
+plot(tci)
+mod <- lm(session_duration_mins ~ location, ccl_clean)
+anova(mod)
+plot(ccl_clean$location, ccl_clean$session_duration_mins, main="Session duration by IP location", xlab="IP location", ylab="Session duration (mins)")
+(tci <- TukeyHSD(aov(session_duration_mins ~ location, filtered)))
+plot(tci, las=1)
+plot(ccl_clean$session_duration_mins, main="Session duration for 2016", ylab="Session duration (mins)")
+plot(ccl2$session_duration_mins, main="Session duration for 2016", ylab="Session duration (mins)")
+ggplot(data=ccl2, aes(ccl2$session_duration_mins)) + geom_histogram(bins=50) + ggtitle("Session duration") + xlab("Session duration (mins)") + ylab("Count")
+```
